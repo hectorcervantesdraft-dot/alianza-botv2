@@ -27,7 +27,7 @@
   "meet_link": "https://meet.google.com/gfm-hpaa-bxh",
   "imagen_recordatorio_path": "./assets/recordatorio.png",
   "zona_rechazo_extra": ["lejos", "no me queda", "no me conviene", "muy retirado", "esta retirado"],
-  "handoff_numero": "523347225334",
+  "handoff_numero": "525580971200",
   "handoff_keywords": ["duda", "pregunta", "no entiendo", "hablar con alguien", "hablar con una persona", "asesor", "ayuda", "explicame", "explicar", "no se", "no sé", "como funciona", "que es esto"],
   "mensajes_handoff": {
     "derivar": "Para cualquier duda específica puedes escribirle directamente a nuestro equipo 👉 https://wa.me/{handoff_numero}",
