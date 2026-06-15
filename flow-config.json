@@ -8,24 +8,20 @@
   "mensajes": {
     "bienvenida_sin_nombre": "¡Hola! Bienvenido a Alianza D'Bill Factory para FT Premium 🚴. Antes de continuar, ¿me compartes tu nombre?",
     "bienvenida_con_nombre": "¡Hola {nombre}! Bienvenido a Alianza D'Bill Factory para FT Premium. Te hago unas preguntas rápidas para ver si encajas y agendarte una sesión.",
-
     "pedir_zona": "Tenemos operación en el sur y centro de la ciudad: {zonas}. No importa si vives en CDMX o Edo. de México, lo importante es que puedas trabajar en alguna de estas zonas. ¿Te interesa trabajar en alguna de ellas?",
     "fuera_zona": "Por ahora nuestra operación está limitada a esas zonas. Si en algún momento te interesa moverte por ahí, escríbenos de nuevo. ¡Gracias!",
-
     "pedir_vehiculo": "¿Tu vehículo es moto o bici?",
     "pedir_vehiculo_retry": "No te entendí bien 🙏 ¿Sería moto o bici?",
-
     "pedir_disponibilidad": "Para este modelo necesitamos disponibilidad de 6 días a la semana (con 1 día de descanso), 8 horas diarias, dentro de un horario libre de conexión de 10am a 10pm. ¿Puedes cumplir con esta disponibilidad?",
     "disponibilidad_insuficiente": "Por ahora necesitamos esa disponibilidad para que el modelo funcione bien. Si tu situación cambia, escríbenos de nuevo y con gusto seguimos.",
-
     "documentos_recordatorio": "Perfecto. Para tu sesión de mañana lleva listos: {lista}. Si te falta alguno no hay problema, ahí resolvemos cualquier duda.",
     "mensaje_meet": "Mañana nos conectamos a las 10am en este link (es el mismo todos los días): {meet_link}",
     "imagen_caption": "Guarda esta imagen como recordatorio 📌",
-
     "cierre_generico": "Gracias por tu mensaje 🙌"
   },
   "meet_link": "https://meet.google.com/gfm-hpaa-bxh",
   "imagen_recordatorio_path": "./assets/recordatorio.png",
+  "numero_operaciones": "525580971200",
   "zona_rechazo_extra": ["lejos", "no me queda", "no me conviene", "muy retirado", "esta retirado"],
   "handoff_numero": "525580971200",
   "handoff_keywords": ["duda", "pregunta", "no entiendo", "hablar con alguien", "hablar con una persona", "asesor", "ayuda", "explicame", "explicar", "no se", "no sé", "como funciona", "que es esto"],
