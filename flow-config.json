@@ -15,7 +15,7 @@
     "pedir_disponibilidad": "Para este modelo necesitamos disponibilidad de 6 días a la semana (con 1 día de descanso), 8 horas diarias, dentro de un horario libre de conexión de ⏱️ 10am a 10pm. ¿Puedes cumplir con esta disponibilidad?",
     "disponibilidad_insuficiente": "Por ahora necesitamos esa disponibilidad para que el modelo funcione bien. Si tu situación cambia, escríbenos de nuevo y con gusto seguimos.",
     "documentos_recordatorio": "Perfecto. Para tu sesión de mañana lleva listos 📄: {lista}. Si te falta alguno no hay problema, ahí resolvemos cualquier duda.",
-    "mensaje_meet": "Mañana nos conectamos a las 10 a.m. en este link (es el mismo todos los días): {meet_link}",
+    "mensaje_meet": "Mañana nos conectamos a las 10am en este link: {meet_link}\n\nConfirma tu conexión enviando tu nombre completo y la frase \"Me conecto\" al 5580971200 👉 https://wa.me/525580971200",
     "imagen_caption": "Guarda esta imagen como recordatorio 📌",
     "cierre_generico": "Gracias por tu mensaje 🙌"
   },
