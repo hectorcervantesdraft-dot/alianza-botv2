@@ -179,7 +179,7 @@ async function handleMessage(from, text) {
   switch (session.step) {
 
     case 'start': {
-      const generic = ['hola', 'informacion', 'info', 'interesado', 'interesada', 'buenas', 'mas informacion'];
+      const generic = ['hola', 'informacion', 'info', 'interesado', 'interesada', 'buenas', 'mas informacion', 'si', 'no', 'ok', 'bueno', 'claro'];
       const looksLikeName = !generic.some((g) => norm(text).includes(g)) && text.trim().split(/\s+/).length <= 3;
       if (looksLikeName) {
         session.data.nombre = text.trim();
