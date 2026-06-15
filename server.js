@@ -201,10 +201,12 @@ async function handleMessage(from, text) {
       break;
     }
 
-    case 'rechazado':
     case 'done':
+      await reply('¡Nos vemos mañana! 🙌 Cualquier duda escríbenos 👉 https://wa.me/525580971200');
+      break;
+
+    case 'rechazado':
     default:
-      // Reiniciar sesión si el usuario escribe de nuevo
       sessions.delete(from);
       await handleMessage(from, text);
       break;
