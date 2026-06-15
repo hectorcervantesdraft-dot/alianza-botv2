@@ -206,9 +206,14 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // Flujo completado — responder amablemente sin reiniciar
+    // Flujo completado — primera vez responde amablemente, segunda vez manda al equipo
     case 'done':
-      await reply(M.mensaje_final);
+      session.retries = (session.retries || 0) + 1;
+      if (session.retries >= 2) {
+        await reply(`Para cualquier duda escríbenos directamente 👉 https://wa.me/525580971200`);
+      } else {
+        await reply(M.mensaje_final);
+      }
       break;
 
     // Rechazado — si escribe de nuevo, reiniciar el flujo
