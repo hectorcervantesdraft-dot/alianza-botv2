@@ -2,6 +2,7 @@
   "zonas_cobertura_texto": "Taxqueña, Coapa, Polanco, Roma, Reforma, Narvarte, Buenavista o Centro",
   "documentos_requeridos": [
     "INE vigente",
+    "CURP",
     "Licencia de conducir (si aplica)",
     "Comprobante de domicilio"
   ],
@@ -16,7 +17,7 @@
     "pedir_disponibilidad": "Para este modelo necesitamos:\n\n⏱️ 6 días a la semana (1 día de descanso)\n⏱️ 8 horas diarias dentro del horario de 10am a 10pm\n\nLas horas NO se acumulan — no puedes trabajar 7 hoy y 9 mañana. Pero TÚ decides en qué momento del día conectarte dentro de ese horario. ¡Eres tu propio jefe! 🙌\n\n¿Puedes cumplir con esta disponibilidad?",
     "disponibilidad_insuficiente": "Por ahora necesitamos esa disponibilidad para que el modelo funcione bien. Si tu situación cambia, contáctanos 👉 https://wa.me/525580971200",
     "documentos_recordatorio": "Perfecto. Para tu sesión de mañana ten listos: 📄 {lista}. Si te falta alguno no hay problema, ahí resolvemos cualquier duda.",
-    "mensaje_meet": "Mañana nos conectamos a las 10am en este link: {meet_link}\n\nConfirma tu conexión enviando tu nombre completo y la frase \"Me conecto\" al 5580971200 👉 https://wa.me/525580971200",
+    "mensaje_meet": "Mañana nos conectamos a las 10am en este link: {meet_link}\n\nConfirma tu conexión enviando tu nombre completo, CURP y la frase \"Me conecto\" al 5580971200 👉 https://wa.me/525580971200",
     "imagen_caption": "Guarda esta imagen como recordatorio 📌",
     "mensaje_final": "¡Mañana te esperamos! 🙌 Recuerda conectarte puntual a las 10am.",
     "cierre_generico": "Gracias por tu mensaje 🙌"
