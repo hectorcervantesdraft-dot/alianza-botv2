@@ -253,6 +253,10 @@ async function handleMessage(from, text) {
         await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
         await sendImage(from, M.imagen_caption);
         logConversation(from, 'done', text, '[imagen recordatorio]');
+
+        // Notificación al número de operaciones
+        const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
+        await sendMessage(config.numero_operaciones, notif);
       }
       break;
     }
