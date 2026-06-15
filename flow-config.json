@@ -6,7 +6,7 @@
     "Comprobante de domicilio"
   ],
   "mensajes": {
-    "bienvenida_sin_nombre": "¡Hola! Bienvenido a Alianza D'Bill Factory para FT Premium 🚴. Antes de continuar, ¿me compartes tu nombre?",
+    "bienvenida_sin_nombre": "¡Hola! Bienvenido a Alianza D'Bill Factory para FT Premium 🚴. Antes de continuar, ¿me compartes tu nombre completo?",
     "bienvenida_con_nombre": "¡Hola {nombre}! Bienvenido a Alianza D'Bill Factory para FT Premium. Te hago unas preguntas rápidas para ver si encajas y agendarte una sesión 🙂",
     "pedir_zona": "Tenemos operación en el sur y centro de la ciudad: 📍 {zonas} 📍 No importa si vives en CDMX o Edo. de México, lo importante es que puedas trabajar en alguna de estas zonas. ¿Te interesa trabajar en alguna de ellas? 😎",
     "fuera_zona": "Por ahora nuestra operación está limitada a esas zonas. Si en algún momento te interesa moverte por ahí, contáctanos 👉 https://wa.me/525580971200",
