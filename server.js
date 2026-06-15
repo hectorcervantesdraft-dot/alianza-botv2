@@ -102,6 +102,11 @@ async function sendHandoff(to, step, inbound) {
   logConversation(to, step, inbound, msg);
 }
 
+const GENERIC_WORDS = ['hola', 'informacion', 'info', 'interesado', 'interesada', 'buenas',
+  'mas informacion', 'si', 'no', 'ok', 'bueno', 'claro', 'quiero', 'me interesa',
+  'gracias', 'perfecto', 'excelente', 'genial', 'listo', 'entendido', 'de acuerdo',
+  'bien', 'dale', 'sale'];
+
 async function handleMessage(from, text) {
   const session = getSession(from);
   const M = config.mensajes;
@@ -112,6 +117,7 @@ async function handleMessage(from, text) {
     logConversation(from, session.step, text, msg);
   };
 
+  // Handoff por keyword (solo en pasos activos)
   if (!['done', 'rechazado'].includes(session.step) && isHandoffKeyword(text)) {
     await sendHandoff(from, session.step, text);
     return;
@@ -120,8 +126,7 @@ async function handleMessage(from, text) {
   switch (session.step) {
 
     case 'start': {
-      const generic = ['hola', 'informacion', 'info', 'interesado', 'interesada', 'buenas', 'mas informacion', 'si', 'no', 'ok', 'bueno', 'claro', 'quiero', 'me interesa'];
-      const looksLikeName = !generic.some((g) => norm(text).includes(g)) && text.trim().split(/\s+/).length <= 3;
+      const looksLikeName = !GENERIC_WORDS.some((g) => norm(text).includes(g)) && text.trim().split(/\s+/).length <= 3;
       if (looksLikeName) {
         session.data.nombre = text.trim();
         await reply(fill(M.bienvenida_con_nombre, { nombre: session.data.nombre }));
@@ -194,17 +199,19 @@ async function handleMessage(from, text) {
         await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
         await sendImage(from, M.imagen_caption);
         await reply(M.mensaje_final);
-        logConversation(from, 'done', text, '[imagen recordatorio + mensaje final]');
+        logConversation(from, 'done', text, '[imagen + mensaje final]');
         const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
         await sendMessage(config.numero_operaciones, notif);
       }
       break;
     }
 
+    // Flujo completado — responder amablemente sin reiniciar
     case 'done':
-      await reply('¡Nos vemos mañana! 🙌 Cualquier duda escríbenos 👉 https://wa.me/525580971200');
+      await reply(M.mensaje_final);
       break;
 
+    // Rechazado — si escribe de nuevo, reiniciar el flujo
     case 'rechazado':
     default:
       sessions.delete(from);
