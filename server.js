@@ -16,7 +16,7 @@ const sessions = new Map();
 function logConversation(from, step, inbound, outbound) {
   const line = JSON.stringify({ ts: new Date().toISOString(), from, step, inbound, outbound }) + '\n';
   try { appendFileSync('./conversations.log', line); } catch (e) { console.error('Log error:', e.message); }
-  console.log(`[${from}] [${step}] IN: "${inbound}" -> OUT: "${outbound.substring(0, 60)}..."`);
+  console.log(`[${from}] [${step}] IN: "${inbound}" -> OUT: "${outbound.substring(0, 80)}"`);
 }
 
 function getSession(from) {
@@ -29,6 +29,7 @@ function norm(text) { return stripAccents((text || '').trim().toLowerCase()); }
 function fill(template, vars) {
   return Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, v ?? ''), template);
 }
+
 function isHandoffKeyword(text) {
   const t = norm(text);
   return (config.handoff_keywords || []).some((kw) => t.includes(norm(kw)));
@@ -77,6 +78,8 @@ async function sendImage(to, caption) {
 
 function matchVehiculo(text) {
   const v = norm(text);
+  const rechazos = config.vehiculo_rechazo_palabras || [];
+  if (rechazos.some((r) => v.includes(norm(r)))) return 'rechazado';
   if (v.includes('moto')) return 'moto';
   if (v.includes('bici')) return 'bici';
   return null;
@@ -117,7 +120,6 @@ async function handleMessage(from, text) {
     logConversation(from, session.step, text, msg);
   };
 
-  // Handoff por keyword (solo en pasos activos)
   if (!['done', 'rechazado'].includes(session.step) && isHandoffKeyword(text)) {
     await sendHandoff(from, session.step, text);
     return;
@@ -126,7 +128,7 @@ async function handleMessage(from, text) {
   switch (session.step) {
 
     case 'start': {
-      const looksLikeName = !GENERIC_WORDS.some((g) => norm(text).includes(g)) && text.trim().split(/\s+/).length <= 3;
+      const looksLikeName = !GENERIC_WORDS.some((g) => norm(text).includes(g)) && text.trim().split(/\s+/).length <= 4;
       if (looksLikeName) {
         session.data.nombre = text.trim();
         await reply(fill(M.bienvenida_con_nombre, { nombre: session.data.nombre }));
@@ -161,6 +163,11 @@ async function handleMessage(from, text) {
 
     case 'vehiculo': {
       const vehiculo = matchVehiculo(text);
+      if (vehiculo === 'rechazado') {
+        session.step = 'rechazado';
+        await reply(M.vehiculo_no_aplica);
+        break;
+      }
       if (!vehiculo) {
         session.retries = (session.retries || 0) + 1;
         if (session.retries >= 2) {
@@ -193,20 +200,39 @@ async function handleMessage(from, text) {
         }
       } else {
         session.data.disponibilidad_ok = true;
-        session.step = 'done';
+        session.step = 'curp';
         session.retries = 0;
-        await reply(fill(M.documentos_recordatorio, { lista: config.documentos_requeridos.join(', ') }));
-        await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
-        await sendImage(from, M.imagen_caption);
-        await reply(M.mensaje_final);
-        logConversation(from, 'done', text, '[imagen + mensaje final]');
-        const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
-        await sendMessage(config.numero_operaciones, notif);
+        await reply(fill(M.calificado_intro, {
+          meet_link: config.meet_link,
+          lista: config.documentos_requeridos.join(', ')
+        }));
+        await reply(M.pedir_curp);
       }
       break;
     }
 
-    // Flujo completado — primera vez responde amablemente, segunda vez manda al equipo
+    case 'curp': {
+      const t = norm(text);
+      const noCurp = ['no se', 'no sé', 'no la tengo', 'no tengo', 'no recuerdo', 'no sé cual', 'no la recuerdo', 'no la se'];
+      const sinCurp = noCurp.some((w) => t.includes(w));
+
+      if (sinCurp) {
+        session.data.curp = 'No proporcionada';
+        await reply('No te preocupes, mañana te esperamos en el link para la sesión donde la puedes compartir. 🙂');
+      } else {
+        session.data.curp = text.trim().toUpperCase();
+      }
+
+      session.step = 'done';
+      await sendImage(from, M.imagen_caption);
+      await reply(M.mensaje_meet);
+      await reply(M.mensaje_final);
+      logConversation(from, 'done', text, '[imagen + meet + mensaje final]');
+      const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nCURP: ${session.data.curp || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
+      await sendMessage(config.numero_operaciones, notif);
+      break;
+    }
+
     case 'done':
       session.retries = (session.retries || 0) + 1;
       if (session.retries >= 2) {
@@ -216,7 +242,6 @@ async function handleMessage(from, text) {
       }
       break;
 
-    // Rechazado — si escribe de nuevo, reiniciar el flujo
     case 'rechazado':
     default:
       sessions.delete(from);
