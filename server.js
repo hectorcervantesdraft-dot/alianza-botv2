@@ -225,7 +225,7 @@ async function handleMessage(from, text) {
 
       session.step = 'done';
       await sendImage(from, M.imagen_caption);
-      await reply(M.mensaje_meet);
+      await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
       await reply(M.mensaje_final);
       logConversation(from, 'done', text, '[imagen + meet + mensaje final]');
       const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nCURP: ${session.data.curp || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
