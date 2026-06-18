@@ -154,12 +154,23 @@ async function handleMessage(from, text) {
         session.step = 'rechazado';
         await reply(M.fuera_zona);
         await sendMessage(config.numero_operaciones, `❌ Rechazado por zona:\nNombre: ${session.data.nombre || 'No capturado'}\nZona mencionada: ${text}\nTeléfono: +${from}`);
-      } else {
-        session.data.zona = text;
-        session.step = 'vehiculo';
-        session.retries = 0;
-        await reply(M.pedir_vehiculo);
+        break;
       }
+      if (matchSiNo(text) !== true) {
+        session.retries = (session.retries || 0) + 1;
+        if (session.retries >= 2) {
+          await reply(fill(MH.no_entendido, { handoff_numero: config.handoff_numero }));
+          await sendMessage(config.numero_operaciones, `🔀 Handoff por zona no confirmada:\nNombre: ${session.data.nombre || 'No capturado'}\nMensaje: ${text}\nTeléfono: +${from}`);
+          session.step = 'done';
+        } else {
+          await reply(fill(M.pedir_zona, { zonas: config.zonas_cobertura_texto }));
+        }
+        break;
+      }
+      session.data.zona = text;
+      session.step = 'vehiculo';
+      session.retries = 0;
+      await reply(M.pedir_vehiculo);
       break;
     }
 
@@ -231,7 +242,7 @@ async function handleMessage(from, text) {
 
       session.step = 'done';
       await sendImage(from, M.imagen_caption);
-      await reply(M.mensaje_meet);
+      await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));  // ← BUG FIX
       await reply(M.mensaje_final);
       logConversation(from, 'done', text, '[imagen + meet + mensaje final]');
       const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nCURP: ${session.data.curp || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
