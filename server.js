@@ -122,6 +122,7 @@ async function handleMessage(from, text) {
 
   if (!['done', 'rechazado'].includes(session.step) && isHandoffKeyword(text)) {
     await sendHandoff(from, session.step, text);
+    await sendMessage(config.numero_operaciones, `💬 Candidato con dudas (handoff):\nNombre: ${session.data.nombre || 'No capturado'}\nPaso: ${session.step}\nMensaje: ${text}\nTeléfono: +${from}`);
     return;
   }
 
@@ -152,6 +153,7 @@ async function handleMessage(from, text) {
       if (matchZonaRechazo(text)) {
         session.step = 'rechazado';
         await reply(M.fuera_zona);
+        await sendMessage(config.numero_operaciones, `❌ Rechazado por zona:\nNombre: ${session.data.nombre || 'No capturado'}\nZona mencionada: ${text}\nTeléfono: +${from}`);
       } else {
         session.data.zona = text;
         session.step = 'vehiculo';
@@ -166,12 +168,14 @@ async function handleMessage(from, text) {
       if (vehiculo === 'rechazado') {
         session.step = 'rechazado';
         await reply(M.vehiculo_no_aplica);
+        await sendMessage(config.numero_operaciones, `❌ Rechazado por vehículo:\nNombre: ${session.data.nombre || 'No capturado'}\nVehículo mencionado: ${text}\nTeléfono: +${from}`);
         break;
       }
       if (!vehiculo) {
         session.retries = (session.retries || 0) + 1;
         if (session.retries >= 2) {
           await reply(fill(MH.no_entendido, { handoff_numero: config.handoff_numero }));
+          await sendMessage(config.numero_operaciones, `🔀 Handoff por vehículo no reconocido:\nNombre: ${session.data.nombre || 'No capturado'}\nTeléfono: +${from}`);
           session.step = 'done';
         } else {
           await reply(M.pedir_vehiculo_retry);
@@ -190,10 +194,12 @@ async function handleMessage(from, text) {
       if (puede === false) {
         session.step = 'rechazado';
         await reply(M.disponibilidad_insuficiente);
+        await sendMessage(config.numero_operaciones, `❌ Rechazado por disponibilidad:\nNombre: ${session.data.nombre || 'No capturado'}\nVehículo: ${session.data.vehiculo || '-'}\nTeléfono: +${from}`);
       } else if (puede === null) {
         session.retries = (session.retries || 0) + 1;
         if (session.retries >= 2) {
           await reply(fill(MH.no_entendido, { handoff_numero: config.handoff_numero }));
+          await sendMessage(config.numero_operaciones, `🔀 Handoff por disponibilidad no confirmada:\nNombre: ${session.data.nombre || 'No capturado'}\nTeléfono: +${from}`);
           session.step = 'done';
         } else {
           await reply('¿Puedes confirmar con un "sí" o "no"? 🙏');
@@ -225,7 +231,7 @@ async function handleMessage(from, text) {
 
       session.step = 'done';
       await sendImage(from, M.imagen_caption);
-      await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
+      await reply(M.mensaje_meet);
       await reply(M.mensaje_final);
       logConversation(from, 'done', text, '[imagen + meet + mensaje final]');
       const notif = `✅ Nuevo candidato calificado:\nNombre: ${session.data.nombre || 'No capturado'}\nZona: ${session.data.zona || '-'}\nVehículo: ${session.data.vehiculo || '-'}\nCURP: ${session.data.curp || '-'}\nTeléfono: +${from}\nSe conecta mañana a las 10am 👉 ${config.meet_link}`;
