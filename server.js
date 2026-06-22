@@ -12,6 +12,7 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
 const config = JSON.parse(readFileSync('./flow-config.json', 'utf8'));
 const sessions = new Map();
+const processedMessageIds = new Set();
 
 function logConversation(from, step, inbound, outbound) {
   const line = JSON.stringify({ ts: new Date().toISOString(), from, step, inbound, outbound }) + '\n';
@@ -280,7 +281,19 @@ app.post('/webhook', async (req, res) => {
     const entry = req.body.entry?.[0];
     const change = entry?.changes?.[0];
     const message = change?.value?.messages?.[0];
-    if (message?.type === 'text') await handleMessage(message.from, message.text.body);
+    if (message?.type === 'text') {
+      const msgId = message.id;
+      if (processedMessageIds.has(msgId)) {
+        console.log(`[DEDUP] Mensaje duplicado ignorado: ${msgId}`);
+        return res.sendStatus(200);
+      }
+      processedMessageIds.add(msgId);
+      if (processedMessageIds.size > 10000) {
+        const first = processedMessageIds.values().next().value;
+        processedMessageIds.delete(first);
+      }
+      await handleMessage(message.from, message.text.body);
+    }
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
