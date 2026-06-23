@@ -351,6 +351,7 @@ async function handleMessage(from, text) {
       }
 
       session.step = 'done';
+      session.data.completado = true; // flujo real terminado
       await sendImage(from, M.imagen_caption); // try/catch interno, no bloquea si falla
       await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
       await reply(M.mensaje_final);
@@ -362,11 +363,12 @@ async function handleMessage(from, text) {
 
     // ── done ───────────────────────────────────────────────────────────────
     case 'done': {
-      session.retries = (session.retries || 0) + 1;
-      if (session.retries >= 2) {
-        await reply(`Para cualquier duda escríbenos directamente 👉 https://wa.me/525580971200`);
-      } else {
+      if (session.data.completado) {
+        // Flujo completado — recordar la cita
         await reply(M.mensaje_final);
+      } else {
+        // Llegó a done por handoff o error — link de contacto + aviso de reinicio
+        await reply(`Para cualquier duda escríbenos directamente 👉 https://wa.me/525580971200\n\nSi te equivocaste o quieres empezar de nuevo, espera 2 minutos y escríbenos nuevamente 🙂`);
       }
       break;
     }
