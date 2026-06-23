@@ -74,7 +74,10 @@ const QUESTION_WORDS = [
 function looksLikeQuestion(text) {
   if (text.includes('?')) return true;
   const t = norm(text);
-  return QUESTION_WORDS.some((w) => t.includes(norm(w)));
+  // Comparar palabras completas, no substrings — evita falsos positivos en nombres
+  // como "Velazquez" (contiene "que"), "Enrique" (contiene "que"), etc.
+  const words = t.split(/\s+/);
+  return QUESTION_WORDS.some((qw) => words.includes(norm(qw)));
 }
 
 function looksLikeName(text) {
