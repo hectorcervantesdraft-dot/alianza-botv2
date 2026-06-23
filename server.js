@@ -14,7 +14,9 @@ const config = JSON.parse(readFileSync('./flow-config.json', 'utf8'));
 const sessions = new Map();
 const processedMessageIds = new Set();
 
-const SESSION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutos
+const SESSION_TIMEOUT_MS = 2 * 60 * 1000;          // 2 minutos — flujo activo
+const SESSION_CURP_TIMEOUT_MS = 4 * 60 * 1000;      // 4 minutos — esperando CURP
+const SESSION_DONE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas — flujo completado
 
 // ─── Logging ────────────────────────────────────────────────────────────────
 
@@ -30,8 +32,11 @@ function getSession(from) {
   const existing = sessions.get(from);
   if (existing) {
     const elapsed = Date.now() - existing.lastActivity;
-    if (elapsed > SESSION_TIMEOUT_MS) {
-      console.log(`[TIMEOUT] Sesión expirada para ${from}, reiniciando`);
+    let timeout = SESSION_TIMEOUT_MS;
+    if (existing.step === 'done') timeout = SESSION_DONE_TIMEOUT_MS;
+    else if (existing.step === 'curp') timeout = SESSION_CURP_TIMEOUT_MS;
+    if (elapsed > timeout) {
+      console.log(`[TIMEOUT] Sesión expirada para ${from} (step: ${existing.step}), reiniciando`);
       sessions.delete(from);
     } else {
       existing.lastActivity = Date.now();
