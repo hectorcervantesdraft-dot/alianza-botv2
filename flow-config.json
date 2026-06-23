@@ -1,5 +1,6 @@
 {
   "zonas_cobertura_texto": "Taxqueña, Coapa, Polanco, Roma, Reforma, Narvarte, Buenavista o Centro",
+  "zonas_cobertura_lista": ["taxquena", "coapa", "polanco", "roma", "reforma", "narvarte", "buenavista", "centro"],
   "documentos_requeridos": [
     "INE vigente",
     "CURP",
@@ -29,7 +30,11 @@
   "zona_rechazo_extra": ["lejos", "no me queda", "no me conviene", "muy retirado", "esta retirado"],
   "vehiculo_rechazo_palabras": ["auto", "carro", "coche", "camioneta", "camion", "no tengo", "no tiene", "no cuento", "no tenemos", "no tengo moto", "no tengo bici"],
   "handoff_numero": "525580971200",
-  "handoff_keywords": ["duda", "pregunta", "no entiendo", "hablar con alguien", "hablar con una persona", "asesor", "ayuda", "explicame", "explicar", "no se", "no sé", "como funciona", "que es esto", "no puedo", "no podre", "tengo dudas", "tengo una duda"],
+  "handoff_keywords": [
+    "duda", "pregunta", "no entiendo", "hablar con alguien", "hablar con una persona",
+    "asesor", "ayuda", "explicame", "explicar", "como funciona", "que es esto",
+    "tengo dudas", "tengo una duda"
+  ],
   "mensajes_handoff": {
     "derivar": "Para cualquier duda específica puedes escribirle directamente a nuestro equipo 👉 https://wa.me/{handoff_numero}",
     "no_entendido": "No te entendí bien 🙏 ¿Puedes responder con una de las opciones que te pregunté? Si tienes alguna duda puedes escribirle a nuestro equipo 👉 https://wa.me/{handoff_numero}"
