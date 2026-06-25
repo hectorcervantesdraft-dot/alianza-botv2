@@ -21,12 +21,37 @@ const SESSION_TIMEOUT_MS      = 2 * 60 * 1000;          // 2 min — flujo activ
 const SESSION_CURP_TIMEOUT_MS = 4 * 60 * 1000;          // 4 min — esperando CURP
 const SESSION_DONE_TIMEOUT_MS = 8 * 60 * 60 * 1000;     // 8 hrs — flujo completado
 
+// ─── Google Sheets logging ───────────────────────────────────────────────────
+const SHEETS_URL = process.env.SHEETS_URL || 'https://script.google.com/macros/s/AKfycbxvyb-PFYzCr0D_erT0zSyD6vnkrJV-bdfA6PGWhr4jOnxCZqqAe3r48Siv7J0Va61J/exec';
+
+async function logToSheets(telefono, nombre, paso, mensaje, respuesta, estado) {
+  try {
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telefono, nombre, paso, mensaje, respuesta, estado }),
+    });
+  } catch (e) {
+    console.error('[SHEETS] Error logging:', e.message);
+  }
+}
+
 // ─── Logging ──────────────────────────────────────────────────────────────────
 
 function logConversation(from, step, inbound, outbound) {
   const line = JSON.stringify({ ts: new Date().toISOString(), from, step, inbound, outbound }) + '\n';
   try { appendFileSync('./conversations.log', line); } catch (e) { console.error('Log error:', e.message); }
   console.log(`[${from}] [${step}] IN: "${inbound}" -> OUT: "${outbound.substring(0, 80)}"`);
+  // Log a Google Sheets
+  const session = sessions.get(from);
+  logToSheets(
+    from,
+    session?.data?.nombre || '',
+    step,
+    inbound,
+    outbound.substring(0, 200),
+    step
+  );
 }
 
 // ─── Session management ───────────────────────────────────────────────────────
@@ -430,6 +455,17 @@ app.post('/webhook', async (req, res) => {
     if (processedMessageIds.size > 10000) {
       processedMessageIds.delete(processedMessageIds.values().next().value);
     }
+
+    // Loguear mensaje entrante en Google Sheets (no bloquea)
+    const sessionForLog = sessions.get(from);
+    logToSheets(
+      from,
+      sessionForLog?.data?.nombre || '',
+      sessionForLog?.step || 'start',
+      message.text.body,
+      '',
+      'entrante'
+    );
 
     // Mutex por número — si ya se está procesando un mensaje de este número, encolar
     if (processingLocks.has(from)) {
