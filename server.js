@@ -14,11 +14,14 @@ const config = JSON.parse(readFileSync('./flow-config.json', 'utf8'));
 const sessions = new Map();
 const processedMessageIds = new Set();
 
-const SESSION_TIMEOUT_MS = 2 * 60 * 1000;          // 2 minutos — flujo activo
-const SESSION_CURP_TIMEOUT_MS = 4 * 60 * 1000;      // 4 minutos — esperando CURP
-const SESSION_DONE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas — flujo completado
+// ── Mutex por número — evita procesamiento concurrente del mismo usuario ──────
+const processingLocks = new Set();
 
-// ─── Logging ────────────────────────────────────────────────────────────────
+const SESSION_TIMEOUT_MS      = 2 * 60 * 1000;          // 2 min — flujo activo
+const SESSION_CURP_TIMEOUT_MS = 4 * 60 * 1000;          // 4 min — esperando CURP
+const SESSION_DONE_TIMEOUT_MS = 8 * 60 * 60 * 1000;     // 8 hrs — flujo completado
+
+// ─── Logging ──────────────────────────────────────────────────────────────────
 
 function logConversation(from, step, inbound, outbound) {
   const line = JSON.stringify({ ts: new Date().toISOString(), from, step, inbound, outbound }) + '\n';
@@ -26,7 +29,7 @@ function logConversation(from, step, inbound, outbound) {
   console.log(`[${from}] [${step}] IN: "${inbound}" -> OUT: "${outbound.substring(0, 80)}"`);
 }
 
-// ─── Session management ──────────────────────────────────────────────────────
+// ─── Session management ───────────────────────────────────────────────────────
 
 function getSession(from) {
   const existing = sessions.get(from);
@@ -48,7 +51,7 @@ function getSession(from) {
   return session;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function stripAccents(str) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function norm(text) { return stripAccents((text || '').trim().toLowerCase()); }
@@ -61,22 +64,16 @@ function isHandoffKeyword(text) {
   return (config.handoff_keywords || []).some((kw) => t.includes(norm(kw)));
 }
 
-// Palabras que indican que el texto es una pregunta o consulta, no un dato del flujo
 const QUESTION_WORDS = [
-  'cuanto', 'cuánto', 'cuantos', 'cuántos', 'cuanta', 'cuánta',
-  'pagan', 'pago', 'sueldo', 'salario', 'ganan', 'gano', 'cobran',
-  'donde', 'dónde', 'cuando', 'cuándo', 'como', 'cómo', 'que', 'qué',
-  'cual', 'cuál', 'quien', 'quién', 'por que', 'por qué', 'porque',
-  'zona', 'zonas', 'informacion', 'información', 'info',
+  'cuanto', 'cuantos', 'cuanta', 'pagan', 'pago', 'sueldo', 'salario',
+  'ganan', 'gano', 'cobran', 'donde', 'cuando', 'como', 'que', 'cual',
+  'quien', 'porque', 'zona', 'zonas', 'informacion', 'info',
   'trabajo', 'trabajar', 'empleo', 'interesa', 'interesado',
 ];
 
 function looksLikeQuestion(text) {
   if (text.includes('?')) return true;
-  const t = norm(text);
-  // Comparar palabras completas, no substrings — evita falsos positivos en nombres
-  // como "Velazquez" (contiene "que"), "Enrique" (contiene "que"), etc.
-  const words = t.split(/\s+/);
+  const words = norm(text).split(/\s+/);
   return QUESTION_WORDS.some((qw) => words.includes(norm(qw)));
 }
 
@@ -89,27 +86,29 @@ function looksLikeName(text) {
     'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches',
     'ok', 'bien', 'dale', 'sale', 'claro', 'si', 'no',
     'gracias', 'perfecto', 'excelente', 'genial', 'listo',
-    'quiero', 'necesito', 'tengo', 'busco',
+    'quiero', 'necesito', 'tengo', 'busco', 'bici', 'moto',
   ];
-  return !genericWords.some((g) => t.includes(g));
+  return !genericWords.some((g) => t === g || t.startsWith(g + ' ') || t.endsWith(' ' + g));
 }
 
 function matchVehiculo(text) {
   const v = norm(text);
   const rechazos = config.vehiculo_rechazo_palabras || [];
   if (rechazos.some((r) => v.includes(norm(r)))) return 'rechazado';
-  if (v.includes('moto')) return 'moto';
-  if (v.includes('bici')) return 'bici';
+  if (v.includes('moto') || v.includes('motocicleta')) return 'moto';
+  if (v.includes('bici') || v.includes('bicicleta')) return 'bici';
   return null;
 }
 
 function matchSiNo(text) {
   const v = norm(text);
   const noWords = ['aun no', 'todavia no', 'no podria', 'no me interesa', 'tampoco'];
-  const siWords = ['si', 'claro', 'va', 'sale', 'simon', 'obvio', 'puedo', 'podria', 'me interesa', 'todos', 'tengo'];
-  // 'no' solo como palabra completa para evitar falsos positivos en "no sé", "no tengo CURP", etc.
+  const siWords = ['claro', 'va', 'sale', 'simon', 'obvio', 'me interesa'];
   if (noWords.some((w) => v.includes(w))) return false;
   if (v === 'no' || v.startsWith('no ') || v.endsWith(' no')) return false;
+  // 'si' solo como palabra completa
+  const words = v.split(/\s+/);
+  if (words.includes('si') || words.includes('sí')) return true;
   if (siWords.some((w) => v.includes(w))) return true;
   return null;
 }
@@ -120,12 +119,24 @@ function matchZonaRechazo(text) {
 }
 
 function looksLikeCurp(text) {
-  // CURP real: 18 caracteres alfanuméricos
   const cleaned = text.trim().toUpperCase().replace(/\s/g, '');
   return /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(cleaned);
 }
 
-// ─── WhatsApp messaging ──────────────────────────────────────────────────────
+// Detecta si el texto es solo una confirmación simple sin datos reales
+function esSoloConfirmacion(text) {
+  const v = norm(text);
+  const confirmaciones = [
+    'si', 'sí', 'ok', 'okay', 'okey', 'claro', 'va', 'sale', 'simon',
+    'perfecto', 'listo', 'entendido', 'de acuerdo', 'esta bien', 'está bien',
+    'si esta bien', 'sí está bien', 'si ok', 'si claro', 'sí claro',
+    'si, claro', 'sí, claro', 'si gracias', 'sí gracias',
+  ];
+  const vClean = v.replace(/[.,!¡¿]/g, '').trim();
+  return confirmaciones.some((c) => vClean === c || vClean === norm(c));
+}
+
+// ─── WhatsApp messaging ───────────────────────────────────────────────────────
 
 async function sendMessage(to, text) {
   if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) { console.log(`[DRY RUN] -> ${to}: ${text}`); return; }
@@ -181,7 +192,7 @@ async function sendHandoff(to, step, inbound) {
   logConversation(to, step, inbound, msg);
 }
 
-// ─── Main message handler ────────────────────────────────────────────────────
+// ─── Main message handler ─────────────────────────────────────────────────────
 
 async function handleMessage(from, text) {
   const session = getSession(from);
@@ -194,18 +205,17 @@ async function handleMessage(from, text) {
   };
 
   // Handoff keywords — solo aplica antes de done/rechazado
-  // Excluimos 'no puedo' y 'no sé' del check global porque son respuestas válidas en el flujo
   if (!['done', 'rechazado'].includes(session.step) && isHandoffKeyword(text)) {
     await sendHandoff(from, session.step, text);
     await sendMessage(config.numero_operaciones,
       `💬 Candidato con dudas (handoff):\nNombre: ${session.data.nombre || 'No capturado'}\nPaso: ${session.step}\nMensaje: ${text}\nTeléfono: +${from}`);
-    session.step = 'done'; // ← BUG FIX: cerrar sesión para que no quede atrapado
+    session.step = 'done';
     return;
   }
 
   switch (session.step) {
 
-    // ── start ──────────────────────────────────────────────────────────────
+    // ── start ────────────────────────────────────────────────────────────────
     case 'start': {
       if (looksLikeName(text)) {
         session.data.nombre = text.trim();
@@ -219,7 +229,7 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── nombre ─────────────────────────────────────────────────────────────
+    // ── nombre ───────────────────────────────────────────────────────────────
     case 'nombre': {
       if (looksLikeQuestion(text)) {
         session.retries = (session.retries || 0) + 1;
@@ -241,7 +251,7 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── zona ───────────────────────────────────────────────────────────────
+    // ── zona ─────────────────────────────────────────────────────────────────
     case 'zona': {
       if (matchZonaRechazo(text)) {
         session.step = 'rechazado';
@@ -271,7 +281,7 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── vehiculo ───────────────────────────────────────────────────────────
+    // ── vehiculo ──────────────────────────────────────────────────────────────
     case 'vehiculo': {
       const vehiculo = matchVehiculo(text);
       if (vehiculo === 'rechazado') {
@@ -300,7 +310,7 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── disponibilidad ─────────────────────────────────────────────────────
+    // ── disponibilidad ────────────────────────────────────────────────────────
     case 'disponibilidad': {
       const puede = matchSiNo(text);
       if (puede === false) {
@@ -331,31 +341,36 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── curp ───────────────────────────────────────────────────────────────
+    // ── curp ──────────────────────────────────────────────────────────────────
     case 'curp': {
       const t = norm(text);
       const noCurp = ['no se', 'no sé', 'no la tengo', 'no tengo', 'no recuerdo', 'no la recuerdo', 'no la se'];
       const sinCurp = noCurp.some((w) => t.includes(w));
-      const esSiSimple = matchSiNo(text) === true && text.trim().split(/\s+/).length <= 2;
 
       if (sinCurp) {
         // No tiene CURP — avanza sin problema
         session.data.curp = 'No proporcionada';
-      } else if (esSiSimple) {
-        // Respondió "Sí" al mensaje anterior, aún no ha dado la CURP — pedir de nuevo
-        await reply(M.pedir_curp);
-        break;
+      } else if (esSoloConfirmacion(text)) {
+        // Respondió "Sí", "Ok", "Claro" etc. — todavía no ha dado la CURP
+        session.retries = (session.retries || 0) + 1;
+        if (session.retries >= 2) {
+          // Después de 2 intentos sin CURP — avanza de todas formas
+          session.data.curp = 'No proporcionada';
+        } else {
+          await reply(M.pedir_curp);
+          break;
+        }
       } else if (looksLikeCurp(text)) {
         // CURP válida con formato correcto
         session.data.curp = text.trim().toUpperCase().replace(/\s/g, '');
       } else {
-        // Texto libre — lo guardamos tal cual (puede ser CURP mal escrita o parcial)
+        // Texto libre — guardamos tal cual (CURP mal escrita, parcial, o cualquier dato)
         session.data.curp = text.trim().toUpperCase();
       }
 
       session.step = 'done';
-      session.data.completado = true; // flujo real terminado
-      await sendImage(from, M.imagen_caption); // try/catch interno, no bloquea si falla
+      session.data.completado = true;
+      await sendImage(from, M.imagen_caption);
       await reply(fill(M.mensaje_meet, { meet_link: config.meet_link }));
       await reply(M.mensaje_final);
       logConversation(from, 'done', text, '[imagen + meet + mensaje final]');
@@ -364,22 +379,19 @@ async function handleMessage(from, text) {
       break;
     }
 
-    // ── done ───────────────────────────────────────────────────────────────
+    // ── done ──────────────────────────────────────────────────────────────────
     case 'done': {
       if (session.data.completado) {
-        // Flujo completado — recordar la cita
         await reply(M.mensaje_final);
       } else {
-        // Llegó a done por handoff o error — link de contacto + aviso de reinicio
         await reply(`Para cualquier duda escríbenos directamente 👉 https://wa.me/525580971200\n\nSi te equivocaste o quieres empezar de nuevo, espera 2 minutos y escríbenos nuevamente 🙂`);
       }
       break;
     }
 
-    // ── rechazado ──────────────────────────────────────────────────────────
+    // ── rechazado ─────────────────────────────────────────────────────────────
     case 'rechazado':
     default: {
-      // Sin recursión — respuesta directa de cierre
       await sendMessage(from, `Si en algún momento cambia tu situación, escríbenos 👉 https://wa.me/525580971200`);
       logConversation(from, 'rechazado', text, 'cierre');
       break;
@@ -387,7 +399,7 @@ async function handleMessage(from, text) {
   }
 }
 
-// ─── Webhook ─────────────────────────────────────────────────────────────────
+// ─── Webhook ──────────────────────────────────────────────────────────────────
 
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -398,27 +410,40 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+  // Responder 200 inmediatamente para que Meta no reintente
+  res.sendStatus(200);
   try {
     const entry = req.body.entry?.[0];
     const change = entry?.changes?.[0];
     const message = change?.value?.messages?.[0];
-    if (message?.type === 'text') {
-      const msgId = message.id;
-      if (processedMessageIds.has(msgId)) {
-        console.log(`[DEDUP] Mensaje duplicado ignorado: ${msgId}`);
-        return res.sendStatus(200);
-      }
-      processedMessageIds.add(msgId);
-      if (processedMessageIds.size > 10000) {
-        const first = processedMessageIds.values().next().value;
-        processedMessageIds.delete(first);
-      }
-      await handleMessage(message.from, message.text.body);
+    if (!message || message.type !== 'text') return;
+
+    const msgId = message.id;
+    const from  = message.from;
+
+    // Deduplicación por ID
+    if (processedMessageIds.has(msgId)) {
+      console.log(`[DEDUP] Mensaje duplicado ignorado: ${msgId}`);
+      return;
     }
-    res.sendStatus(200);
+    processedMessageIds.add(msgId);
+    if (processedMessageIds.size > 10000) {
+      processedMessageIds.delete(processedMessageIds.values().next().value);
+    }
+
+    // Mutex por número — si ya se está procesando un mensaje de este número, encolar
+    if (processingLocks.has(from)) {
+      console.log(`[MUTEX] Mensaje de ${from} llegó mientras se procesaba otro — ignorado`);
+      return;
+    }
+    processingLocks.add(from);
+    try {
+      await handleMessage(from, message.text.body);
+    } finally {
+      processingLocks.delete(from);
+    }
   } catch (err) {
     console.error(err);
-    res.sendStatus(200);
   }
 });
 
