@@ -22,7 +22,7 @@ const SESSION_CURP_TIMEOUT_MS = 4 * 60 * 1000;          // 4 min — esperando C
 const SESSION_DONE_TIMEOUT_MS = 8 * 60 * 60 * 1000;     // 8 hrs — flujo completado
 
 // ─── Google Sheets logging ───────────────────────────────────────────────────
-const SHEETS_URL = process.env.SHEETS_URL || 'https://script.google.com/macros/s/AKfycbxvyb-PFYzCr0D_erT0zSyD6vnkrJV-bdfA6PGWhr4jOnxCZqqAe3r48Siv7J0Va61J/exec';
+const SHEETS_URL = process.env.SHEETS_URL || 'https://script.google.com/macros/s/AKfycbysHERQGT22J3IuD7rj5phr33-Qjreov1nYG5DIjZmd3oGedkZgSJTfgvQ2Lfhzpg44bg/exec';
 
 async function logToSheets(telefono, nombre, paso, mensaje, respuesta, estado) {
   try {
@@ -61,7 +61,7 @@ function getSession(from) {
   if (existing) {
     const elapsed = Date.now() - existing.lastActivity;
     let timeout = SESSION_TIMEOUT_MS;
-    if (existing.step === 'done') timeout = SESSION_DONE_TIMEOUT_MS;
+    if (existing.step === 'done' && existing.data?.completado) timeout = SESSION_DONE_TIMEOUT_MS;
     else if (existing.step === 'curp') timeout = SESSION_CURP_TIMEOUT_MS;
     if (elapsed > timeout) {
       console.log(`[TIMEOUT] Sesión expirada para ${from} (step: ${existing.step}), reiniciando`);
@@ -155,7 +155,7 @@ function esSoloConfirmacion(text) {
     'si', 'sí', 'ok', 'okay', 'okey', 'claro', 'va', 'sale', 'simon',
     'perfecto', 'listo', 'entendido', 'de acuerdo', 'esta bien', 'está bien',
     'si esta bien', 'sí está bien', 'si ok', 'si claro', 'sí claro',
-    'si, claro', 'sí, claro', 'si gracias', 'sí gracias', 'super',
+    'si, claro', 'sí, claro', 'si gracias', 'sí gracias',
   ];
   const vClean = v.replace(/[.,!¡¿]/g, '').trim();
   return confirmaciones.some((c) => vClean === c || vClean === norm(c));
