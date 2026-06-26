@@ -155,7 +155,7 @@ function esSoloConfirmacion(text) {
     'si', 'sí', 'ok', 'okay', 'okey', 'claro', 'va', 'sale', 'simon',
     'perfecto', 'listo', 'entendido', 'de acuerdo', 'esta bien', 'está bien',
     'si esta bien', 'sí está bien', 'si ok', 'si claro', 'sí claro',
-    'si, claro', 'sí, claro', 'si gracias', 'sí gracias',
+    'si, claro', 'sí, claro', 'si gracias', 'sí gracias', 'super',
   ];
   const vClean = v.replace(/[.,!¡¿]/g, '').trim();
   return confirmaciones.some((c) => vClean === c || vClean === norm(c));
