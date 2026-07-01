@@ -94,10 +94,24 @@ const QUESTION_WORDS = [
   'ganan', 'gano', 'cobran', 'donde', 'cuando', 'como', 'que', 'cual',
   'quien', 'porque', 'zona', 'zonas', 'informacion', 'info',
   'trabajo', 'trabajar', 'empleo', 'interesa', 'interesado',
+  'quiero', 'necesito', 'busco', 'mas', 'sobre',
+];
+
+// Palabras que por sí solas o combinadas NO son nombres
+const NOT_NAME_WORDS = [
+  'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches',
+  'ok', 'bien', 'dale', 'sale', 'claro', 'si', 'no',
+  'gracias', 'perfecto', 'excelente', 'genial', 'listo',
+  'bici', 'moto', 'motocicleta', 'bicicleta',
+  'sur', 'norte', 'este', 'oeste', 'centro',
+  'quiero', 'necesito', 'tengo', 'busco',
 ];
 
 function looksLikeQuestion(text) {
-  if (text.includes('?')) return true;
+  // Detectar signos de pregunta incluyendo ¡ al inicio (mensajes tipo "¡Hola! Quiero...")
+  if (text.includes('?') || text.includes('¿')) return true;
+  // Si tiene ¡ al inicio probablemente es un saludo/frase, no un nombre
+  if (text.trim().startsWith('¡')) return true;
   const words = norm(text).split(/\s+/);
   return QUESTION_WORDS.some((qw) => words.includes(norm(qw)));
 }
@@ -105,15 +119,15 @@ function looksLikeQuestion(text) {
 function looksLikeName(text) {
   if (looksLikeQuestion(text)) return false;
   const words = text.trim().split(/\s+/);
+  // Nombres: entre 1 y 5 palabras
   if (words.length < 1 || words.length > 5) return false;
   const t = norm(text);
-  const genericWords = [
-    'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches',
-    'ok', 'bien', 'dale', 'sale', 'claro', 'si', 'no',
-    'gracias', 'perfecto', 'excelente', 'genial', 'listo',
-    'quiero', 'necesito', 'tengo', 'busco', 'bici', 'moto',
-  ];
-  return !genericWords.some((g) => t === g || t.startsWith(g + ' ') || t.endsWith(' ' + g));
+  // Si alguna palabra del texto está en la lista de no-nombres, rechazar
+  const textWords = t.split(/\s+/);
+  if (NOT_NAME_WORDS.some((g) => textWords.includes(g))) return false;
+  // Si el texto completo normalizado es exactamente una no-nombre palabra
+  if (NOT_NAME_WORDS.includes(t)) return false;
+  return true;
 }
 
 function matchVehiculo(text) {
